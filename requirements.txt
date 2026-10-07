@@ -1,10 +1,10 @@
---extra-index-url https://download.pytorch.org/whl/cpu
 streamlit
 python-dotenv
 pymupdf
 google-genai
 groq
-torch
+torch @ https://download.pytorch.org/whl/cpu/torch-2.14.1%2Bcpu-cp314-cp314-manylinux_2_28_x86_64.whl ; sys_platform == "linux" and python_version == "3.14"
+torch; sys_platform != "linux" or python_version != "3.14"
 sentence-transformers
 llama-index-core
 llama-index-embeddings-huggingface
