@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from llama_index.core.schema import QueryBundle
 from llama_index.core import Settings, StorageContext, load_index_from_storage, PromptTemplate
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from google import genai as google_genai
@@ -89,10 +90,11 @@ def load_query_engine():
 
 
 # ---- RETRY LOGIC ----
-def query_with_retry(query_engine, query, max_retries=3):
+def query_with_retry(query_engine, query, retrieval_text=None, max_retries=3):
+    bundle = QueryBundle(query_str=query, custom_embedding_strs=[retrieval_text or query])
     for attempt in range(max_retries):
         try:
-            return query_engine.query(query)
+            return query_engine.query(bundle)
         except Exception as e:
             err = str(e).lower()
             if "429" in str(e) or "rate_limit" in err or "quota" in err or "resource_exhausted" in err:
@@ -204,7 +206,14 @@ if prompt:
     with st.chat_message("assistant"):
         with st.spinner("Searching documents..."):
             query_with_history = build_query_with_history(prompt, st.session_state.messages)
-            response = query_with_retry(query_engine, query_with_history)
+            # Embed only the question (plus the previous user turn for vague follow-ups),
+            # so earlier answers don't pull retrieval toward the old topic.
+            retrieval_text = prompt
+            if any(prompt.lower().startswith(t) for t in FOLLOWUP_TRIGGERS):
+                prev_user = [m["content"] for m in st.session_state.messages[:-1] if m["role"] == "user"]
+                if prev_user:
+                    retrieval_text = f"{prev_user[-1]} {prompt}"
+            response = query_with_retry(query_engine, query_with_history, retrieval_text)
 
         if response is None:
             answer = "I am temporarily unavailable due to API rate limits. Please wait 30 seconds and try again."
