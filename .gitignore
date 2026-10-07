@@ -1,5 +1,5 @@
 venv/
 .env
 __pycache__/
-storage/
+# storage/ is committed so the deployed app has its index
 .claude/
